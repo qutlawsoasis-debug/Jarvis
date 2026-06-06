@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+.venv/
+
+# Python caches and compiled files
+**/__pycache__/
+*.pyc
+*.spec
+
+# Build and package output directories
+ui/out/
+ui/dist/
+dist/
+build/
+
+# Local configuration files containing API keys
+backend/config.json
+.env
+.env.local
+
+# Logs and runtime outputs
+backend/jarvis.log
+backend/output/
+*.mp3
+*.wav
+
+# Model weights
+backend/xtts_models/
+
+# Exceptions
+!backend/speakers/*.wav
+!backend/speakers/*.mp3
+
+

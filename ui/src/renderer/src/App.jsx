@@ -149,132 +149,155 @@ function App() {
   }
 
   return (
-    <div className="dashboard-container">
-      <div className="dashboard-header">
-        <h1 className="title-neon">JARVIS LAUNCHER</h1>
-        <div className="subtitle">STARK INDUSTRIES // HUD CONTROLLER V4.0</div>
+    <>
+      <div className="window-titlebar">
+        <div className="window-title">Jarvis HUD Launcher</div>
+        <div className="window-controls">
+          <button className="control-btn" type="button" onClick={() => window.electron.ipcRenderer.send('window-minimize')}>−</button>
+          <button className="control-btn close" type="button" onClick={() => window.electron.ipcRenderer.send('window-close')}>×</button>
+        </div>
       </div>
-
-      <div className="dashboard-layout">
-        {/* Левая колонка - визуализатор состояния */}
-        <div className="visualizer-col">
-          <div
-            className={`arc-reactor ${
-              !backendConnected ? 'stopped' : status.state
-            }`}
-          >
-            <div className="reactor-ring-outer"></div>
-            <div className="reactor-ring-inner"></div>
-            <div className="reactor-core"></div>
-          </div>
-          <div
-            className={`status-tag ${
-              !backendConnected ? 'stopped' : status.state
-            }`}
-          >
-            {getStateLabel(status.state)}
-          </div>
+      <div className="dashboard-container">
+        <div className="dashboard-header">
+          <h1 className="title-neon">JARVIS LAUNCHER</h1>
+          <div className="subtitle">STARK INDUSTRIES // HUD CONTROLLER V4.0</div>
         </div>
 
-        {/* Правая колонка - настройки */}
-        <form onSubmit={handleSave} className="settings-col">
-          <div className="form-group">
-            <label className="form-label">API-ключ Google AI Studio</label>
-            <input
-              type="password"
-              name="GEMINI_API_KEY"
-              className="form-input"
-              placeholder="Введите AIzaSy..."
-              value={config.GEMINI_API_KEY}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Устройство ввода (Микрофон)</label>
-            <select
-              name="MIC_NAME"
-              className="form-select"
-              value={config.MIC_NAME}
-              onChange={handleInputChange}
+        <div className="dashboard-layout">
+          {/* Левая колонка - визуализатор состояния */}
+          <div className="visualizer-col">
+            <div
+              className={`arc-reactor ${
+                !backendConnected ? 'stopped' : status.state
+              }`}
             >
-              {mics.map((mic) => (
-                <option key={mic.index} value={mic.name}>
-                  {mic.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Активационное слово</label>
-            <input
-              type="text"
-              name="WAKE_WORD"
-              className="form-input"
-              value={config.WAKE_WORD}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Активный тайм-аут (секунд)</label>
-            <input
-              type="number"
-              name="ACTIVE_TIMEOUT"
-              className="form-input"
-              value={config.ACTIVE_TIMEOUT}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-
-          <div className="actions-container">
-            <button
-              type="submit"
-              className="btn btn-cyber-cyan"
-              disabled={saving || !backendConnected}
+              <div className="reactor-ring-outer"></div>
+              <div className="reactor-ring-inner"></div>
+              <div className="reactor-core"></div>
+            </div>
+            <div
+              className={`status-tag ${
+                !backendConnected ? 'stopped' : status.state
+              }`}
             >
-              {saving ? 'Сохранение...' : 'Запустить Джарвиса'}
-            </button>
-
-            {status.running && status.state !== 'error' ? (
-              <button
-                type="button"
-                onClick={handleStop}
-                className="btn btn-cyber-pink"
-                disabled={!backendConnected}
-              >
-                Остановить
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleStart}
-                className="btn btn-cyber-cyan"
-                disabled={!backendConnected || !config.GEMINI_API_KEY || status.state === 'error'}
-              >
-                Старт
-              </button>
-            )}
+              {getStateLabel(status.state)}
+            </div>
           </div>
-        </form>
-      </div>
 
-      {/* Вывод красного баннера при ошибке */}
-      {status.state === 'error' && status.error && (
-        <div className="error-banner">
-          <div className="error-icon">⚠️</div>
-          <div className="error-message">
-            <strong>КРИТИЧЕСКАЯ ОШИБКА:</strong> {status.error}
-          </div>
+          {/* Правая колонка - настройки */}
+          <form onSubmit={handleSave} className="settings-col">
+            <div className="form-group">
+              <label className="form-label">API-ключ Google AI Studio</label>
+              <input
+                type="password"
+                name="GEMINI_API_KEY"
+                className="form-input"
+                placeholder="Введите AIzaSy..."
+                value={config.GEMINI_API_KEY}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Устройство ввода (Микрофон)</label>
+              <select
+                name="MIC_NAME"
+                className="form-select"
+                value={config.MIC_NAME}
+                onChange={handleInputChange}
+              >
+                {mics.map((mic) => (
+                  <option key={mic.index} value={mic.name}>
+                    {mic.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Активационное слово</label>
+              <input
+                type="text"
+                name="WAKE_WORD"
+                className="form-input"
+                value={config.WAKE_WORD}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Активный тайм-аут (секунд)</label>
+              <input
+                type="number"
+                name="ACTIVE_TIMEOUT"
+                className="form-input"
+                value={config.ACTIVE_TIMEOUT}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Движок озвучки (TTS)</label>
+              <select
+                name="TTS_ENGINE"
+                className="form-select"
+                value={config.TTS_ENGINE || 'online'}
+                onChange={handleInputChange}
+              >
+                <option value="online">Облачный (Microsoft Edge-TTS)</option>
+                <option value="local">Локальный нейросетевой (Piper ONNX)</option>
+                <option value="local_sapi5">Локальный базовый (SAPI5)</option>
+              </select>
+            </div>
+
+            <div className="actions-container">
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={saving || !backendConnected}
+              >
+                {saving ? 'Сохранение...' : 'Запустить Джарвиса'}
+              </button>
+
+              {status.running && status.state !== 'error' ? (
+                <button
+                  type="button"
+                  onClick={handleStop}
+                  className="btn btn-stop"
+                  disabled={!backendConnected}
+                >
+                  Остановить
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleStart}
+                  className="btn btn-outline"
+                  disabled={!backendConnected || !config.GEMINI_API_KEY || status.state === 'error'}
+                >
+                  Старт
+                </button>
+              )}
+            </div>
+          </form>
         </div>
-      )}
 
-      <div className="dashboard-footer">STARK INDUSTRIES // HUD INTERFACE SYSTEM // SECURE CONNECTION</div>
-    </div>
+        {/* Вывод красного баннера при ошибке */}
+        {status.state === 'error' && status.error && (
+          <div className="error-banner">
+            <div className="error-icon">⚠️</div>
+            <div className="error-message">
+              <strong>КРИТИЧЕСКАЯ ОШИБКА:</strong> {status.error}
+            </div>
+          </div>
+        )}
+
+        <div className="dashboard-footer">STARK INDUSTRIES // HUD INTERFACE SYSTEM // SECURE CONNECTION</div>
+      </div>
+    </>
   )
 }
 

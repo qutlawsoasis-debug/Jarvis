@@ -8,6 +8,7 @@ import fs from 'fs'
 import { autoUpdater } from 'electron-updater'
 
 let pyProcess = null
+let mainWindow = null
 
 function startPythonBackend() {
   let backendPath
@@ -98,11 +99,11 @@ function initAutoUpdater() {
 
 function createWindow() {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
     show: false,
-    autoHideMenuBar: true,
+    frame: false, // Frameless!
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -143,6 +144,14 @@ app.whenReady().then(() => {
 
   // Initialize Auto Updater
   initAutoUpdater()
+
+  // Custom Window IPC handlers
+  ipcMain.on('window-minimize', () => {
+    if (mainWindow) mainWindow.minimize()
+  })
+  ipcMain.on('window-close', () => {
+    if (mainWindow) mainWindow.close()
+  })
 
   createWindow()
 

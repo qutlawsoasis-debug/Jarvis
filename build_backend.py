@@ -2,42 +2,79 @@ import os
 import sys
 import subprocess
 
-def install_pyinstaller():
-    """Устанавливает pyinstaller в виртуальное окружение, если его нет"""
+# Configure UTF-8 encoding for standard output/error
+try:
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+except AttributeError:
+    pass
+
+def get_pip_cmd():
+    """Detects pip command: virtual environment pip has priority, fallbacks to sys.executable -m pip"""
     venv_pip = os.path.join("backend", ".venv", "Scripts", "pip.exe")
-    if not os.path.exists(venv_pip):
-        venv_pip = os.path.join("backend", ".venv", "bin", "pip")
+    if os.path.exists(venv_pip):
+        return [venv_pip]
         
-    print("[Build Backend] Проверяем установку PyInstaller в виртуальном окружении...")
+    venv_pip_bin = os.path.join("backend", ".venv", "bin", "pip")
+    if os.path.exists(venv_pip_bin):
+        return [venv_pip_bin]
+        
+    return [sys.executable, "-m", "pip"]
+
+def get_pyinstaller_cmd():
+    """Detects pyinstaller command: virtual environment pyinstaller has priority, fallbacks to global/python modules"""
+    venv_pyinstaller = os.path.join("backend", ".venv", "Scripts", "pyinstaller.exe")
+    if os.path.exists(venv_pyinstaller):
+        return [venv_pyinstaller]
+        
+    venv_pyinstaller_bin = os.path.join("backend", ".venv", "bin", "pyinstaller")
+    if os.path.exists(venv_pyinstaller_bin):
+        return [venv_pyinstaller_bin]
+        
+    # Check if pyinstaller is in PATH
     try:
-        # Проверяем, установлен ли pyinstaller
-        subprocess.run([venv_pip, "show", "pyinstaller"], capture_output=True, check=True)
-        print("[Build Backend] PyInstaller уже установлен.")
+        subprocess.run(["pyinstaller", "--version"], capture_output=True, check=True)
+        return ["pyinstaller"]
     except (subprocess.CalledProcessError, FileNotFoundError):
-        print("[Build Backend] PyInstaller не найден в venv. Устанавливаем...")
-        try:
-            subprocess.run([venv_pip, "install", "pyinstaller"], check=True)
-            print("[Build Backend] PyInstaller успешно установлен в виртуальное окружение.")
-        except Exception as e:
-            print(f"[Build Backend] Ошибка при установке PyInstaller: {e}")
-            sys.exit(1)
+        pass
+        
+    # Check if PyInstaller can be run via python module
+    try:
+        subprocess.run([sys.executable, "-m", "PyInstaller", "--version"], capture_output=True, check=True)
+        return [sys.executable, "-m", "PyInstaller"]
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+        
+    return None
+
+def install_pyinstaller():
+    """Installs pyinstaller if not present in the detected environment"""
+    pip_cmd = get_pip_cmd()
+    pyinstaller_cmd = get_pyinstaller_cmd()
+    
+    if pyinstaller_cmd is not None:
+        print(f"[Build Backend] PyInstaller is already available via: {' '.join(pyinstaller_cmd)}")
+        return
+
+    print("[Build Backend] PyInstaller not found. Installing via pip...")
+    try:
+        subprocess.run(pip_cmd + ["install", "pyinstaller"], check=True)
+        print("[Build Backend] PyInstaller installed successfully.")
+    except Exception as e:
+        print(f"[Build Backend] Error installing PyInstaller: {e}")
+        sys.exit(1)
 
 def run_build():
-    """Запускает компиляцию бэкенда через PyInstaller из виртуального окружения"""
-    venv_pyinstaller = os.path.join("backend", ".venv", "Scripts", "pyinstaller.exe")
-    if not os.path.exists(venv_pyinstaller):
-        venv_pyinstaller = os.path.join("backend", ".venv", "bin", "pyinstaller")
-        
-    if not os.path.exists(venv_pyinstaller):
-        print(f"[Build Backend] Ошибка: PyInstaller не найден по пути {venv_pyinstaller}!")
+    """Runs backend compilation using PyInstaller"""
+    pyinstaller_cmd = get_pyinstaller_cmd()
+    if pyinstaller_cmd is None:
+        print("[Build Backend] Error: PyInstaller is still not available after installation step!")
         sys.exit(1)
         
-    print("[Build Backend] Запуск PyInstaller для сборки backend/server.py...")
+    print(f"[Build Backend] Running PyInstaller via: {' '.join(pyinstaller_cmd)}")
     
-    # Конструируем аргументы
-    # Собираем все зависимости для faster_whisper, silero_vad, onnxruntime и edge_tts
-    cmd = [
-        venv_pyinstaller,
+    # Construct PyInstaller arguments
+    cmd = pyinstaller_cmd + [
         "--onefile",
         "--name=jarvis_backend",
         "--collect-all=faster_whisper",
@@ -51,13 +88,13 @@ def run_build():
         "backend/server.py"
     ]
     
-    print(f"[Build Backend] Команда сборки: {' '.join(cmd)}")
+    print(f"[Build Backend] Build command: {' '.join(cmd)}")
     result = subprocess.run(cmd)
     
     if result.returncode == 0:
-        print("[Build Backend] Сборка успешно завершена! Исполняемый файл находится в dist/jarvis_backend.exe")
+        print("[Build Backend] Build completed successfully! Executable is at dist/jarvis_backend.exe")
     else:
-        print(f"[Build Backend] Ошибка: Сборка завершилась неудачно (код возврата {result.returncode})")
+        print(f"[Build Backend] Error: Build failed with return code {result.returncode}")
         sys.exit(result.returncode)
 
 if __name__ == "__main__":

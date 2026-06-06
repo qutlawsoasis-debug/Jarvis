@@ -15,8 +15,16 @@ from dotenv import load_dotenv
 from tools import AVAILABLE_TOOLS, GEMINI_TOOLS_DECLARATION, retrieve_memory_list
 
 # Настройка кодировки для корректного вывода на русском языке в консоли Windows
-sys.stdout.reconfigure(encoding='utf-8')
-sys.stderr.reconfigure(encoding='utf-8')
+if sys.stdout is not None and hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+if sys.stderr is not None and hasattr(sys.stderr, 'reconfigure'):
+    try:
+        sys.stderr.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
 
 # Класс для дублирования вывода консоли в лог-файл
 class Logger(object):
@@ -27,13 +35,29 @@ class Logger(object):
         self.log = open(filename, "a", encoding="utf-8")
 
     def write(self, message):
-        self.terminal.write(message)
+        if self.terminal is not None:
+            try:
+                self.terminal.write(message)
+            except Exception:
+                pass
         self.log.write(message)
         self.log.flush()
 
     def flush(self):
-        self.terminal.flush()
+        if self.terminal is not None and hasattr(self.terminal, 'flush'):
+            try:
+                self.terminal.flush()
+            except Exception:
+                pass
         self.log.flush()
+
+    def isatty(self):
+        if self.terminal is not None and hasattr(self.terminal, 'isatty'):
+            try:
+                return self.terminal.isatty()
+            except Exception:
+                pass
+        return False
 
 sys.stdout = Logger()
 sys.stderr = Logger(os.path.join(os.path.dirname(__file__), "jarvis.log"))

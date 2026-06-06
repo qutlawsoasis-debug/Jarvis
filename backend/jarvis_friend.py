@@ -68,7 +68,7 @@ ASSISTANT_ERROR = ""
 GUI_QUEUE = None
 
 local_speaker = None
-if TTS_ENGINE in ["local", "elevenlabs"]:
+if TTS_ENGINE in ["local", "local_sapi5", "elevenlabs"]:
     try:
         import pyttsx3
         local_speaker = pyttsx3.init()
@@ -213,44 +213,18 @@ def generate_voice_fish(text, filename="response.mp3"):
         print(f"[Fish Audio Ошибка соединения]: {e}")
         return False
 
-def generate_voice_local_xtts(text, filename="response.wav"):
-    """Генерирует WAV файл из текста с помощью локального XTTS API сервера"""
-    url = "http://localhost:5002/tts_to_audio/"
-    speakers_dir = os.path.join(os.path.dirname(__file__), "speakers")
-    speaker_file = XTTS_SPEAKER
-    
-    if not os.path.exists(os.path.join(speakers_dir, speaker_file)):
-        if os.path.exists(speakers_dir):
-            wav_files = [f for f in os.listdir(speakers_dir) if f.endswith('.wav')]
-            mp3_files = [f for f in os.listdir(speakers_dir) if f.endswith('.mp3')]
-            if wav_files:
-                speaker_file = wav_files[0]
-            elif mp3_files:
-                speaker_file = mp3_files[0]
-            else:
-                speaker_file = "speaker.wav"
-        else:
-            speaker_file = "speaker.wav"
-            
-    print(f"[Local-XTTS] Использую спикера: {speaker_file}")
-    payload = {
-        "text": text,
-        "language": "ru",
-        "speaker_wav": speaker_file,
-    }
-    try:
-        response = requests.post(url, json=payload, timeout=60)
-        if response.status_code == 200:
-            with open(filename, "wb") as f:
-                f.write(response.content)
-            print(f"[Local-XTTS] Аудио сгенерировано: {os.path.getsize(filename)} байт")
-            return True
-        else:
-            print(f"[Local-XTTS API Ошибка {response.status_code}]: {response.text}")
-            return False
-    except Exception as e:
-        print(f"[Local-XTTS Ошибка соединения]: {e}")
-        return False
+local_tts_engine = None
+
+def get_local_tts_engine():
+    global local_tts_engine
+    if local_tts_engine is None:
+        try:
+            from local_tts import LocalTTS
+            local_tts_engine = LocalTTS()
+        except Exception as e:
+            print(f"[Ошибка инициализации LocalTTS (Piper)]: {e}")
+    return local_tts_engine
+
 
 def speak(text):
     """Озвучивает текст: использует local_xtts, ElevenLabs, оффлайн SAPI5 или онлайн Edge-TTS"""
@@ -267,14 +241,14 @@ def speak(text):
         GUI_QUEUE.put({"type": "jarvis_text", "value": clean_text})
         
     try:
-        # Проверяем кэш для аудиофайлов (не кэшируем для локального SAPI5)
-        use_cache = len(clean_text) < 100 and TTS_ENGINE != "local"
+        # Проверяем кэш для аудиофайлов (не кэшируем для legacy SAPI5)
+        use_cache = len(clean_text) < 100 and TTS_ENGINE != "local_sapi5"
         cache_file = None
         
         if use_cache:
             import hashlib
-            if TTS_ENGINE == "local_xtts":
-                voice_id = XTTS_SPEAKER
+            if TTS_ENGINE in ["local", "local_xtts"]:
+                voice_id = "piper_dmitri"
                 ext = "wav"
             elif TTS_ENGINE == "fishaudio":
                 voice_id = FISH_VOICE_ID
@@ -297,7 +271,7 @@ def speak(text):
                 play_audio(cache_file)
                 return
 
-        if TTS_ENGINE == "local_xtts":
+        if TTS_ENGINE in ["local", "local_xtts"]:
             filename = cache_file if use_cache else "response.wav"
             try:
                 if os.path.exists(filename) and not use_cache:
@@ -305,11 +279,15 @@ def speak(text):
             except:
                 pass
             
-            success = generate_voice_local_xtts(clean_text, filename)
+            success = False
+            engine = get_local_tts_engine()
+            if engine:
+                success = engine.synthesize(clean_text, filename)
+                
             if success:
                 play_audio(filename)
             else:
-                print("[Local-XTTS сбой] Переключение на резервный Edge-TTS голос...")
+                print("[Local Piper TTS сбой] Переключение на резервный Edge-TTS голос...")
                 filename_mp3 = "response.mp3"
                 try:
                     if os.path.exists(filename_mp3):
@@ -395,12 +373,12 @@ def speak(text):
                         local_speaker.runAndWait()
                     except Exception as e:
                         print(f"[Ошибка локального синтеза]: {e}")
-        elif TTS_ENGINE == "local" and local_speaker:
+        elif TTS_ENGINE == "local_sapi5" and local_speaker:
             try:
                 local_speaker.say(clean_text)
                 local_speaker.runAndWait()
             except Exception as e:
-                print(f"[Ошибка локального синтеза речи]: {e}")
+                print(f"[Ошибка локального синтеза речи (SAPI5)]: {e}")
         else:
             filename = cache_file if use_cache else "response.mp3"
             try:

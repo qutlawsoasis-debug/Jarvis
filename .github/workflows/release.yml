@@ -9,6 +9,8 @@ jobs:
   release:
     name: Build & Release Windows App
     runs-on: windows-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout Repository

@@ -63,7 +63,10 @@ sys.stdout = Logger()
 sys.stderr = Logger(os.path.join(os.path.dirname(__file__), "jarvis.log"))
 
 # Загружаем настройки из .env
-load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
+if getattr(sys, 'frozen', False):
+    load_dotenv(os.path.join(os.path.dirname(sys.executable), '.env'))
+else:
+    load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 
 # Настройки по умолчанию
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
@@ -604,7 +607,10 @@ def run_voice_assistant(gui_queue=None):
     ASSISTANT_STATE = "thinking"
     
     # Загружаем настройки из config.json
-    config_path = os.path.join(os.path.dirname(__file__), "config.json")
+    if getattr(sys, 'frozen', False):
+        config_path = os.path.join(os.path.dirname(sys.executable), "config.json")
+    else:
+        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
     if os.path.exists(config_path):
         try:
             with open(config_path, "r", encoding="utf-8") as f:

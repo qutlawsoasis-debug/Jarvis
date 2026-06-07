@@ -248,6 +248,8 @@ function App() {
                 onChange={handleInputChange}
               >
                 <option value="online">Облачный (Microsoft Edge-TTS)</option>
+                <option value="fishaudio">Премиальный ИИ (Fish Audio)</option>
+                <option value="elevenlabs">Премиальный ИИ (ElevenLabs)</option>
                 <option value="local">Локальный нейросетевой (Piper ONNX)</option>
                 <option value="local_sapi5">Локальный базовый (SAPI5)</option>
               </select>

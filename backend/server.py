@@ -11,6 +11,12 @@ import uvicorn
 
 # Добавляем текущую директорию в пути импорта, чтобы правильно импортировать модули бэкенда
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+def get_config_path():
+    if getattr(sys, 'frozen', False):
+        return os.path.join(os.path.dirname(sys.executable), "config.json")
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+
 import jarvis_friend
 
 app = FastAPI(title="Jarvis API Server")
@@ -45,13 +51,12 @@ def get_microphones():
             device_info = p.get_device_info_by_host_api_device_index(0, i)
             if device_info.get('maxInputChannels', 0) > 0:
                 name = device_info.get('name', '')
-                # Очистка имени от некорректных кодировок (иногда драйверы на Windows отдают cp1251)
+                # Очистка имени от некорректных кодировок (корректно обрабатываем CP1252/CP1251)
+                name_clean = name
                 try:
-                    name_clean = name.encode('cp1251', errors='ignore').decode('utf-8', errors='ignore')
-                    if not name_clean.strip():
-                        name_clean = name
-                except:
-                    name_clean = name
+                    name_clean = name.encode('cp1252').decode('cp1251')
+                except Exception:
+                    pass
                 mics.append({"index": str(i), "name": name_clean})
         except Exception as e:
             print(f"[Server] Ошибка получения инфо об устройстве {i}: {e}")
@@ -84,7 +89,7 @@ def get_mics_endpoint():
 
 @app.get("/api/config")
 def get_config_endpoint():
-    config_path = os.path.join(os.path.dirname(__file__), "config.json")
+    config_path = get_config_path()
     if os.path.exists(config_path):
         try:
             with open(config_path, "r", encoding="utf-8") as f:
@@ -101,7 +106,7 @@ def get_config_endpoint():
 
 @app.post("/api/config")
 def save_config_endpoint(config: ConfigSchema):
-    config_path = os.path.join(os.path.dirname(__file__), "config.json")
+    config_path = get_config_path()
     try:
         config_dict = config.dict()
         with open(config_path, "w", encoding="utf-8") as f:
@@ -145,7 +150,7 @@ if __name__ == "__main__":
     print("[Server] Запуск API сервера на http://127.0.0.1:47720 ...")
     
     # Пробуем автоматически запустить ассистента, если в config.json есть ключ
-    config_path = os.path.join(os.path.dirname(__file__), "config.json")
+    config_path = get_config_path()
     if os.path.exists(config_path):
         try:
             with open(config_path, "r", encoding="utf-8") as f:

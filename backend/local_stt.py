@@ -39,7 +39,10 @@ class LocalSTT:
         
         # Загружаем имя микрофона из config.json, если не передано явно
         if mic_name is None:
-            config_path = os.path.join(os.path.dirname(__file__), "config.json")
+            if getattr(sys, 'frozen', False):
+                config_path = os.path.join(os.path.dirname(sys.executable), "config.json")
+            else:
+                config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
             if os.path.exists(config_path):
                 try:
                     with open(config_path, "r", encoding="utf-8") as f:
@@ -80,8 +83,16 @@ class LocalSTT:
                 device_info = self.p.get_device_info_by_index(i)
                 if device_info.get('maxInputChannels', 0) > 0:
                     dev_name = device_info.get('name', '')
-                    if name_pattern.lower() in dev_name.lower():
-                        print(f"[LocalSTT] Найдено аудиоустройство '{dev_name}' на индексе {i}")
+                    
+                    # Декодируем имя на случай если оно пришло в некорректной кодировке CP1252
+                    dev_name_clean = dev_name
+                    try:
+                        dev_name_clean = dev_name.encode('cp1252').decode('cp1251')
+                    except Exception:
+                        pass
+                        
+                    if name_pattern.lower() in dev_name_clean.lower() or name_pattern.lower() in dev_name.lower():
+                        print(f"[LocalSTT] Найдено аудиоустройство '{dev_name_clean}' на индексе {i}")
                         return i
             except Exception as e:
                 print(f"[LocalSTT] Ошибка опроса устройства {i}: {e}")

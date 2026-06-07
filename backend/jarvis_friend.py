@@ -189,7 +189,7 @@ def play_audio(filename="response.mp3"):
 
 def generate_voice_elevenlabs(text, filename="response.mp3"):
     """Генерирует MP3 файл из текста с помощью ElevenLabs API (для клонированного голоса)"""
-    global ASSISTANT_ERROR, ASSISTANT_STATE, ASSISTANT_RUNNING
+    global ASSISTANT_ERROR
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}"
     headers = {
         "Accept": "audio/mpeg",
@@ -233,19 +233,15 @@ def generate_voice_elevenlabs(text, filename="response.mp3"):
                     error_msg = "ElevenLabs: Голос не найден (404 Not Found)."
             
             ASSISTANT_ERROR = error_msg
-            ASSISTANT_STATE = "error"
-            ASSISTANT_RUNNING = False
             return False
     except Exception as e:
         print(f"[ElevenLabs Ошибка соединения]: {e}")
         ASSISTANT_ERROR = f"ElevenLabs: Ошибка соединения: {str(e)}"
-        ASSISTANT_STATE = "error"
-        ASSISTANT_RUNNING = False
         return False
 
 def generate_voice_fish(text, filename="response.mp3"):
     """Генерирует MP3 файл из текста с помощью Fish Audio API"""
-    global ASSISTANT_ERROR, ASSISTANT_STATE, ASSISTANT_RUNNING
+    global ASSISTANT_ERROR
     url = "https://api.fish.audio/v1/tts"
     headers = {
         "Authorization": f"Bearer {FISH_API_KEY}",
@@ -277,14 +273,10 @@ def generate_voice_fish(text, filename="response.mp3"):
                     error_msg = "Fish Audio: Референсный голос не найден (404 Not Found)."
             
             ASSISTANT_ERROR = error_msg
-            ASSISTANT_STATE = "error"
-            ASSISTANT_RUNNING = False
             return False
     except Exception as e:
         print(f"[Fish Audio Ошибка соединения]: {e}")
         ASSISTANT_ERROR = f"Fish Audio: Ошибка соединения: {str(e)}"
-        ASSISTANT_STATE = "error"
-        ASSISTANT_RUNNING = False
         return False
 
 local_tts_engine = None
@@ -383,44 +375,78 @@ def speak(text):
                         print(f"[Ошибка локального синтеза]: {e}")
                         
         elif TTS_ENGINE == "fishaudio":
+            success = False
             if not FISH_API_KEY or not FISH_VOICE_ID:
                 ASSISTANT_ERROR = "Fish Audio: API-ключ или Voice ID не заполнены в настройках."
-                ASSISTANT_STATE = "error"
-                ASSISTANT_RUNNING = False
-                return
-            
-            filename = cache_file if use_cache else "response.mp3"
-            try:
-                if os.path.exists(filename) and not use_cache:
-                    os.remove(filename)
-            except:
-                pass
-            
-            success = generate_voice_fish(clean_text, filename)
-            if success:
-                play_audio(filename)
             else:
-                return
+                filename = cache_file if use_cache else "response.mp3"
+                try:
+                    if os.path.exists(filename) and not use_cache:
+                        os.remove(filename)
+                except:
+                    pass
+                success = generate_voice_fish(clean_text, filename)
+                if success:
+                    play_audio(filename)
+
+            if not success:
+                print("[Fish Audio сбой] Переключение на резервный Edge-TTS голос...")
+                filename_fallback = "response.mp3"
+                try:
+                    if os.path.exists(filename_fallback):
+                        os.remove(filename_fallback)
+                except:
+                    pass
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                success_edge = loop.run_until_complete(generate_voice(clean_text, filename_fallback))
+                loop.close()
+                if success_edge:
+                    play_audio(filename_fallback)
+                elif local_speaker:
+                    print("[Edge-TTS сбой] Переключение на локальный резервный голос SAPI5...")
+                    try:
+                        local_speaker.say(clean_text)
+                        local_speaker.runAndWait()
+                    except Exception as e:
+                        print(f"[Ошибка локального синтеза]: {e}")
                 
         elif TTS_ENGINE == "elevenlabs":
+            success = False
             if not ELEVENLABS_API_KEY or not ELEVENLABS_VOICE_ID:
                 ASSISTANT_ERROR = "ElevenLabs: API-ключ или Voice ID не заполнены в настройках."
-                ASSISTANT_STATE = "error"
-                ASSISTANT_RUNNING = False
-                return
-            
-            filename = cache_file if use_cache else "response.mp3"
-            try:
-                if os.path.exists(filename) and not use_cache:
-                    os.remove(filename)
-            except:
-                pass
-            
-            success = generate_voice_elevenlabs(clean_text, filename)
-            if success:
-                play_audio(filename)
             else:
-                return
+                filename = cache_file if use_cache else "response.mp3"
+                try:
+                    if os.path.exists(filename) and not use_cache:
+                        os.remove(filename)
+                except:
+                    pass
+                success = generate_voice_elevenlabs(clean_text, filename)
+                if success:
+                    play_audio(filename)
+
+            if not success:
+                print("[ElevenLabs сбой] Переключение на резервный Edge-TTS голос...")
+                filename_fallback = "response.mp3"
+                try:
+                    if os.path.exists(filename_fallback):
+                        os.remove(filename_fallback)
+                except:
+                    pass
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                success_edge = loop.run_until_complete(generate_voice(clean_text, filename_fallback))
+                loop.close()
+                if success_edge:
+                    play_audio(filename_fallback)
+                elif local_speaker:
+                    print("[Edge-TTS сбой] Переключение на локальный резервный голос SAPI5...")
+                    try:
+                        local_speaker.say(clean_text)
+                        local_speaker.runAndWait()
+                    except Exception as e:
+                        print(f"[Ошибка локального синтеза]: {e}")
         elif TTS_ENGINE == "local_sapi5" and local_speaker:
             try:
                 local_speaker.say(clean_text)

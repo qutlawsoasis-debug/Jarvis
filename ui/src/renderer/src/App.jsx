@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 function App() {
   const [mics, setMics] = useState([{ index: 'Default', name: 'По умолчанию (Default)' }])
@@ -94,12 +94,15 @@ function App() {
     }
   }, [backendConnected])
 
-  // Тост при возникновении критических ошибок бэкенда
+  const lastErrorRef = useRef('')
+
+  // Тост при возникновении ошибок или предупреждений бэкенда
   useEffect(() => {
-    if (backendConnected && status.state === 'error' && status.error) {
-      showToast(`Критическая ошибка: ${status.error}`, 'error')
+    if (backendConnected && status.error && status.error !== lastErrorRef.current) {
+      showToast(status.error, 'error')
     }
-  }, [status.state, status.error, backendConnected])
+    lastErrorRef.current = status.error || ''
+  }, [status.error, backendConnected])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -375,11 +378,11 @@ function App() {
         </div>
 
         {/* Вывод красного баннера при ошибке */}
-        {status.state === 'error' && status.error && (
+        {status.error && (
           <div className="error-banner">
             <div className="error-icon">⚠️</div>
             <div className="error-message">
-              <strong>КРИТИЧЕСКАЯ ОШИБКА:</strong> {status.error}
+              <strong>ОШИБКА / ПРЕДУПРЕЖДЕНИЕ:</strong> {status.error}
             </div>
           </div>
         )}

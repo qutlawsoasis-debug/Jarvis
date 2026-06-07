@@ -7,7 +7,11 @@ function App() {
     MIC_NAME: 'Default',
     WAKE_WORD: 'джарвис',
     ACTIVE_TIMEOUT: 15,
-    TTS_ENGINE: 'online'
+    TTS_ENGINE: 'online',
+    ELEVENLABS_API_KEY: '',
+    ELEVENLABS_VOICE_ID: '',
+    FISH_API_KEY: '',
+    FISH_VOICE_ID: ''
   })
   const [status, setStatus] = useState({
     running: false,
@@ -16,6 +20,14 @@ function App() {
   })
   const [backendConnected, setBackendConnected] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [toast, setToast] = useState({ show: false, message: '', type: 'error' })
+
+  const showToast = (message, type = 'error') => {
+    setToast({ show: true, message, type })
+    setTimeout(() => {
+      setToast((prev) => ({ ...prev, show: false }))
+    }, 4000)
+  }
 
   const API_BASE = 'http://127.0.0.1:47720'
 
@@ -82,6 +94,13 @@ function App() {
     }
   }, [backendConnected])
 
+  // Тост при возникновении критических ошибок бэкенда
+  useEffect(() => {
+    if (backendConnected && status.state === 'error' && status.error) {
+      showToast(`Критическая ошибка: ${status.error}`, 'error')
+    }
+  }, [status.state, status.error, backendConnected])
+
   const handleInputChange = (e) => {
     const { name, value } = e.target
     setConfig((prev) => ({
@@ -104,9 +123,13 @@ function App() {
       if (res.ok) {
         const data = await res.json()
         console.log('[UI] Настройки сохранены и бэкенд перезапущен:', data)
+        showToast('Настройки успешно сохранены!', 'success')
+      } else {
+        throw new Error('Server returned non-ok status')
       }
     } catch (err) {
       console.error('[UI] Не удалось сохранить настройки:', err)
+      showToast('Не удалось сохранить настройки. Проверите бэкенд.', 'error')
     } finally {
       setSaving(false)
     }
@@ -114,17 +137,27 @@ function App() {
 
   const handleStart = async () => {
     try {
-      await fetch(`${API_BASE}/api/start`, { method: 'POST' })
+      const res = await fetch(`${API_BASE}/api/start`, { method: 'POST' })
+      if (res.ok) {
+        showToast('Джарвис запускается...', 'success')
+      } else {
+        showToast('Не удалось запустить Джарвиса.', 'error')
+      }
     } catch (err) {
       console.error(err)
+      showToast('Ошибка при запуске Джарвиса.', 'error')
     }
   }
 
   const handleStop = async () => {
     try {
-      await fetch(`${API_BASE}/api/stop`, { method: 'POST' })
+      const res = await fetch(`${API_BASE}/api/stop`, { method: 'POST' })
+      if (res.ok) {
+        showToast('Джарвис остановлен.', 'success')
+      }
     } catch (err) {
       console.error(err)
+      showToast('Ошибка при остановке Джарвиса.', 'error')
     }
   }
 
@@ -255,6 +288,60 @@ function App() {
               </select>
             </div>
 
+            {config.TTS_ENGINE === 'elevenlabs' && (
+              <>
+                <div className="form-group">
+                  <label className="form-label">ElevenLabs API-ключ</label>
+                  <input
+                    type="password"
+                    name="ELEVENLABS_API_KEY"
+                    className="form-input"
+                    placeholder="Введите ElevenLabs API key..."
+                    value={config.ELEVENLABS_API_KEY || ''}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">ElevenLabs Voice ID (ID голоса)</label>
+                  <input
+                    type="text"
+                    name="ELEVENLABS_VOICE_ID"
+                    className="form-input"
+                    placeholder="Например: 21m00Tcm4TlvDq8ikWAM"
+                    value={config.ELEVENLABS_VOICE_ID || ''}
+                    onChange={handleInputChange}
+                  />
+                </div>
+              </>
+            )}
+
+            {config.TTS_ENGINE === 'fishaudio' && (
+              <>
+                <div className="form-group">
+                  <label className="form-label">Fish Audio API-ключ</label>
+                  <input
+                    type="password"
+                    name="FISH_API_KEY"
+                    className="form-input"
+                    placeholder="Введите Fish Audio API key..."
+                    value={config.FISH_API_KEY || ''}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Fish Audio Voice ID (ID голоса)</label>
+                  <input
+                    type="text"
+                    name="FISH_VOICE_ID"
+                    className="form-input"
+                    placeholder="Например: egor_jarvis..."
+                    value={config.FISH_VOICE_ID || ''}
+                    onChange={handleInputChange}
+                  />
+                </div>
+              </>
+            )}
+
             <div className="actions-container">
               <button
                 type="submit"
@@ -299,6 +386,15 @@ function App() {
 
         <div className="dashboard-footer">STARK INDUSTRIES // HUD INTERFACE SYSTEM // SECURE CONNECTION</div>
       </div>
+
+      {toast.show && (
+        <div className="toast-container">
+          <div className={`toast ${toast.type}`}>
+            <div className="toast-icon">{toast.type === 'success' ? '✅' : '⚠️'}</div>
+            <div className="toast-content">{toast.message}</div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

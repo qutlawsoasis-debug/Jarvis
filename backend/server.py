@@ -36,6 +36,10 @@ class ConfigSchema(BaseModel):
     WAKE_WORD: str = "джарвис"
     ACTIVE_TIMEOUT: int = 15
     TTS_ENGINE: str = "online"
+    ELEVENLABS_API_KEY: str = ""
+    ELEVENLABS_VOICE_ID: str = ""
+    FISH_API_KEY: str = ""
+    FISH_VOICE_ID: str = ""
 
 def get_microphones():
     p = pyaudio.PyAudio()
@@ -90,19 +94,29 @@ def get_mics_endpoint():
 @app.get("/api/config")
 def get_config_endpoint():
     config_path = get_config_path()
+    defaults = {
+        "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY", ""),
+        "MIC_NAME": "Default",
+        "WAKE_WORD": os.getenv("WAKE_WORD", "джарвис"),
+        "ACTIVE_TIMEOUT": int(os.getenv("ACTIVE_TIMEOUT", "15")),
+        "TTS_ENGINE": os.getenv("TTS_ENGINE", "online"),
+        "ELEVENLABS_API_KEY": os.getenv("ELEVENLABS_API_KEY", ""),
+        "ELEVENLABS_VOICE_ID": os.getenv("ELEVENLABS_VOICE_ID", ""),
+        "FISH_API_KEY": os.getenv("FISH_API_KEY", ""),
+        "FISH_VOICE_ID": os.getenv("FISH_VOICE_ID", "")
+    }
     if os.path.exists(config_path):
         try:
             with open(config_path, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                # Merge loaded config with defaults so no new key is ever missing
+                for k, v in defaults.items():
+                    if k not in data:
+                        data[k] = v
+                return data
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Ошибка чтения файла конфигурации: {str(e)}")
-    return {
-        "GEMINI_API_KEY": "",
-        "MIC_NAME": "Default",
-        "WAKE_WORD": "джарвис",
-        "ACTIVE_TIMEOUT": 15,
-        "TTS_ENGINE": "online"
-    }
+    return defaults
 
 @app.post("/api/config")
 def save_config_endpoint(config: ConfigSchema):

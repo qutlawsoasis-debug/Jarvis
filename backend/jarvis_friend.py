@@ -600,6 +600,7 @@ def process_ai_interaction(prompt):
 def run_voice_assistant(gui_queue=None):
     global GUI_QUEUE, GEMINI_API_KEY, WAKE_WORD, ACTIVE_TIMEOUT, TTS_ENGINE
     global ASSISTANT_RUNNING, ASSISTANT_STATE, ASSISTANT_ERROR
+    global ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID, FISH_API_KEY, FISH_VOICE_ID
     
     GUI_QUEUE = gui_queue
     ASSISTANT_RUNNING = True
@@ -620,6 +621,12 @@ def run_voice_assistant(gui_queue=None):
                 ACTIVE_TIMEOUT = int(config_data.get("ACTIVE_TIMEOUT", 15))
                 TTS_ENGINE = config_data.get("TTS_ENGINE", "online").lower().strip()
                 mic_name = config_data.get("MIC_NAME", "Default")
+                
+                # Загружаем API ключи и Voice ID для премиум-голосов
+                ELEVENLABS_API_KEY = config_data.get("ELEVENLABS_API_KEY", "")
+                ELEVENLABS_VOICE_ID = config_data.get("ELEVENLABS_VOICE_ID", "")
+                FISH_API_KEY = config_data.get("FISH_API_KEY", "")
+                FISH_VOICE_ID = config_data.get("FISH_VOICE_ID", "")
         except Exception as e:
             print(f"[КРИТИЧЕСКАЯ ОШИБКА]: Ошибка чтения config.json: {e}")
             ASSISTANT_STATE = "error"
